@@ -1,0 +1,63 @@
+{
+	"implementingParty": "a",
+	"participants": {
+		"c": "192.168.0.0",
+		"s": "192.168.0.0",
+		"a": "192.168.0.0"
+	},
+	"globalType": {
+		"type": "RECURSION_DEFINITION",
+		"recursionVariable": "X",
+		"protocolContinuation": {
+			"type": "EXCHANGE",
+			"sender": "s",
+			"receiver": "c",
+			"branches": {
+				"login": {
+					"valueType": "unit",
+					"protocolContinuation": {
+						"type": "EXCHANGE",
+						"sender": "c",
+						"receiver": "a",
+						"branches": {
+							"passwd": {
+								"valueType": "str",
+								"protocolContinuation": {
+									"type": "EXCHANGE",
+									"sender": "a",
+									"receiver": "s",
+									"branches": {
+										"auth": {
+											"valueType": "bool",
+											"protocolContinuation": {
+												"type": "RECURSIVE_CALL",
+												"recursionVariable": "X",
+												"protocolContinuation": {}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"quit": {
+					"valueType": "unit",
+					"protocolContinuation": {
+						"type": "EXCHANGE",
+						"sender": "c",
+						"receiver": "a",
+						"branches": {
+							"quit": {
+								"valueType": "unit",
+								"protocolContinuation": {
+                                    "type": "END"
+                                }
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
