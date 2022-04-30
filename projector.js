@@ -145,6 +145,15 @@ function ddep(p, q, globalType) {
 	return returnType;
 }
 
-const CSA = JSON.parse(fs.readFileSync("./CSA.json", "utf8"));
-const r = relativeProjection("c", "a", CSA["globalType"]);
+const CSA = JSON.parse(fs.readFileSync("./Protocols/CSA.json", "utf8"));
+const r = relativeProjection("c", "s", CSA["globalType"]);
+
+// Uncomment to use the global type from Example 3, and comment the two lines above
+// const Example3 = JSON.parse(fs.readFileSync("./Protocols/Example3.json", "utf8"));
+// const r = relativeProjection("q", "s", Example3["globalType"]);
+
+// Uncomment to see an undefined relative projection generate an error
+// const error = JSON.parse(fs.readFileSync("./Protocols/Error.json", "utf8"));
+// const r = relativeProjection("r", "s", error["globalType"]);
+
 console.log(util.inspect(r, false, null, true));
