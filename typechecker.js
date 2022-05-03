@@ -45,7 +45,6 @@ function checkGlobalType(globalType, recursiveVariables, participants) {
 	}
 }
 
-const errorProtocol = JSON.parse(
-	fs.readFileSync("./Protocols/TypeError.json", "utf8")
-);
-checkGlobalType(errorProtocol["globalType"], [], errorProtocol["participants"]);
+module.exports = {
+    checkGlobalType
+}
