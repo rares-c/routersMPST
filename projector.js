@@ -20,21 +20,17 @@ function relativeProjection(p, q, globalType) {
 
 // Function that computes the relative projection of a recursion definition
 function projectRecursionDefinition(p, q, globalType) {
+	const continuationProjection = relativeProjection(
+		p,
+		q,
+		globalType["protocolContinuation"]
+	);
 	// Recursion definition, check the contractiveness of the continuation
-	if (
-		isContractive(
-			relativeProjection(p, q, globalType["protocolContinuation"]),
-			globalType["recursionVariable"]
-		)
-	) {
+	if (isContractive(continuationProjection, globalType["recursionVariable"])) {
 		return {
 			type: "RECURSION_DEFINITION",
 			recursionVariable: globalType["recursionVariable"],
-			protocolContinuation: relativeProjection(
-				p,
-				q,
-				globalType["protocolContinuation"]
-			),
+			protocolContinuation: continuationProjection,
 		};
 	} else {
 		// Either non-contractive or undefined
@@ -68,7 +64,7 @@ function projectExchange(p, q, globalType) {
 		});
 		return returnType;
 	} else {
-		return ddep(p, q, globalType);
+		return ddep(p, q, globalType)[1];
 	}
 }
 
@@ -92,7 +88,8 @@ function isContractive(relativeType, recursionVariable) {
 	}
 }
 
-// Function that computes the dependencies, if possible, of a given exchange
+// Function that computes the dependencies, if possible, of a given exchange. It returns whether
+// a skip was produced, and the corresponding dependency if there is a non-local choice
 function ddep(p, q, globalType) {
 	const branchesProjections = [];
 	Object.keys(globalType["branches"]).forEach((label) => {
@@ -115,7 +112,7 @@ function ddep(p, q, globalType) {
 	}
 	if (allEqual) {
 		// All branches are equal, not a non-local choice, just select one of them and omit the skip
-		return branchesProjections[0];
+		return [true, branchesProjections[0]];
 	}
 	const returnType = {
 		type: "DEPENDENCY",
@@ -130,7 +127,7 @@ function ddep(p, q, globalType) {
 		// Input dependency
 		returnType["dependencyType"] = "INPUT";
 	} else {
-        // Undefined, throw an error
+		// Undefined, throw an error
 		throw "Undefined relative type";
 	}
 	Object.keys(globalType["branches"]).forEach((label) => {
@@ -142,11 +139,25 @@ function ddep(p, q, globalType) {
 			),
 		};
 	});
-	return returnType;
+	return [false, returnType];
 }
 
-const CSA = JSON.parse(fs.readFileSync("./Protocols/CSA.json", "utf8"));
-const r = relativeProjection("c", "s", CSA["globalType"]);
+// Function that checks the relative wellformedness of a globaltype
+function checkWellformedness(globalType, participants) {
+	const participantList = Object.keys(participants);
+	for (let i = 0; i < participantList.length; i++) {
+		for (let j = i + 1; j < participantList; j++) {
+			relativeProjection(participantList[i], participantList[j], globalType);
+		}
+	}
+}
+
+module.exports = {
+    checkWellformedness, ddep, relativeProjection
+}
+
+// const CSA = JSON.parse(fs.readFileSync("./Protocols/CSA.json", "utf8"));
+// const r = relativeProjection("c", "s", CSA["globalType"]);
 
 // Uncomment to use the global type from Example 3, and comment the two lines above
 // const Example3 = JSON.parse(fs.readFileSync("./Protocols/Example3.json", "utf8"));
@@ -156,4 +167,4 @@ const r = relativeProjection("c", "s", CSA["globalType"]);
 // const error = JSON.parse(fs.readFileSync("./Protocols/Error.json", "utf8"));
 // const r = relativeProjection("r", "s", error["globalType"]);
 
-console.log(util.inspect(r, false, null, true));
+// console.log(util.inspect(r, false, null, true));

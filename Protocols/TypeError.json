@@ -31,8 +31,7 @@
 											"valueType": "bool",
 											"protocolContinuation": {
 												"type": "RECURSIVE_CALL",
-												"recursionVariable": "X",
-												"protocolContinuation": {}
+												"recursionVariable": "X"
 											}
 										}
 									}
