@@ -3,11 +3,8 @@ const checker = require("./typechecker");
 const util = require("util");
 const fs = require("fs");
 
-let newState = 0;
-
 // Function that returns the router process corresponding to participant p and the given global type
 function synthesize(globalType, p, qs) {
-    
 	switch (globalType["type"]) {
 		case "EXCHANGE":
 			return synthesizeExchange(globalType, p, qs);
@@ -28,7 +25,7 @@ function synthesizeExchange(globalType, p, qs) {
 	qs.forEach((q) => {
 		if (hdep(q, p, globalType)) deps.push(q);
 	});
-	if (p == globalType["sender"] || p == globalType["receiver"]) {        
+	if (p == globalType["sender"] || p == globalType["receiver"]) {
 		// Receive the label
 		const returnState = {
 			actionType: "RECEIVE",
@@ -41,24 +38,32 @@ function synthesizeExchange(globalType, p, qs) {
 			returnState["branches"][label] = {
 				actionType: "SEND",
 				to: [...new Set([...deps, globalType["receiver"]])],
-				continuation: {}
+				continuation: {},
 			};
-            if(globalType["branches"][label]["valueType"] == "unit"){
-                // If the message that was sent is supposed to have a unit type, no further value will be sent
-                returnState["branches"][label]["continuation"] = synthesize(globalType["branches"][label]["protocolContinuation"], p, qs);
-            } else {
-                // The message implies a value of some type, receive it from the sender and forward it to the receiver
-                returnState["branches"][label]["continuation"] = {
+			if (globalType["branches"][label]["valueType"] == "unit") {
+				// If the message that was sent is supposed to have a unit type, no further value will be sent
+				returnState["branches"][label]["continuation"] = synthesize(
+					globalType["branches"][label]["protocolContinuation"],
+					p,
+					qs
+				);
+			} else {
+				// The message implies a value of some type, receive it from the sender and forward it to the receiver
+				returnState["branches"][label]["continuation"] = {
 					actionType: "RECEIVE",
 					messageType: globalType["branches"][label]["valueType"],
 					from: globalType["sender"],
 					continuation: {
 						actionType: "SEND",
 						to: [globalType["receiver"]],
-						continuation: synthesize(globalType["branches"][label]["protocolContinuation"], p, qs),
-					}
+						continuation: synthesize(
+							globalType["branches"][label]["protocolContinuation"],
+							p,
+							qs
+						),
+					},
 				};
-            }
+			}
 		});
 		return returnState;
 	} else if (p != globalType["sender"] && p != globalType["receiver"]) {
@@ -82,7 +87,11 @@ function synthesizeExchange(globalType, p, qs) {
 				returnState["branches"][label] = {
 					actionType: "SEND",
 					to: [p],
-					continuation: synthesize(globalType["branches"][label]["protocolContinuation"], p, qs),
+					continuation: synthesize(
+						globalType["branches"][label]["protocolContinuation"],
+						p,
+						qs
+					),
 				};
 			});
 			return returnState;
@@ -100,7 +109,11 @@ function synthesizeExchange(globalType, p, qs) {
 				returnState["branches"][label] = {
 					actionType: "SEND",
 					to: [p],
-					continuation: synthesize(globalType["branches"][label]["protocolContinuation"], p, qs),
+					continuation: synthesize(
+						globalType["branches"][label]["protocolContinuation"],
+						p,
+						qs
+					),
 				};
 			});
 			return returnState;
@@ -126,7 +139,11 @@ function synthesizeExchange(globalType, p, qs) {
 					},
 				};
 				returnState["branches"][label]["continuation"]["branches"][label] =
-					synthesize(globalType["branches"][label]["protocolContinuation"], p, qs);
+					synthesize(
+						globalType["branches"][label]["protocolContinuation"],
+						p,
+						qs
+					);
 			});
 			return returnState;
 		} else {
@@ -140,31 +157,31 @@ function synthesizeExchange(globalType, p, qs) {
 }
 
 // Function that returns the router process corresponding to a recursion definition
-function synthesizeDefinition(globalType, p, qs){
-    const qsPrime = [];
-    qs.forEach((q) => {
-        if (projector.relativeProjection(p, q, globalType)["type"] != "END")
-            qsPrime.push(q);
-    });
-    if (qsPrime.length > 0) {
-        return {
-            actionType: "RECURSION_DEFINITION",
-            recursionVariable: globalType["recursionVariable"],
-            continuation: synthesize(globalType["protocolContinuation"], p, qsPrime)
-        };
-    } else {
-        return {
-            actionType: "END"
-        }
-    }
+function synthesizeDefinition(globalType, p, qs) {
+	const qsPrime = [];
+	qs.forEach((q) => {
+		if (projector.relativeProjection(p, q, globalType)["type"] != "END")
+			qsPrime.push(q);
+	});
+	if (qsPrime.length > 0) {
+		return {
+			actionType: "RECURSION_DEFINITION",
+			recursionVariable: globalType["recursionVariable"],
+			continuation: synthesize(globalType["protocolContinuation"], p, qsPrime),
+		};
+	} else {
+		return {
+			actionType: "END",
+		};
+	}
 }
 
 // Function that returns the router process corresponding to a recursive call
-function synthesizeCall(globalType, p, qs){
-    return {
-        actionType: "RECURSIVE_CALL",
-        recursionVariable: globalType["recursionVariable"]
-    }
+function synthesizeCall(globalType, p, qs) {
+	return {
+		actionType: "RECURSIVE_CALL",
+		recursionVariable: globalType["recursionVariable"],
+	};
 }
 
 // Function that computes whether the given exchange affects the communication
@@ -177,20 +194,82 @@ function hdep(p, q, exchange) {
 	);
 }
 
+// Function that transforms the router process into its corresponding state machine
+// The process is traversed recursively, recursive definitions are removed, and recursive calls are transformed
+// into transitions to previous states
+function transform(process, recursiveDefs, pendingVars) {
+	let returnState = JSON.parse(JSON.stringify(process));
+	switch (process["actionType"]) {
+		case "RECEIVE":
+			pendingVars.forEach((v) => {
+				recursiveDefs[v] = returnState;
+			});
+			if (process["messageType"] == "LABEL") {
+				// Need to transform each branch separately
+				Object.keys(process["branches"]).forEach((label) => {
+					returnState["branches"][label] = transform(
+						returnState["branches"][label],
+						recursiveDefs,
+						[]
+					);
+				});
+			} else {
+				// No possible branches, just transform the continuation
+				returnState["continuation"] = transform(
+					returnState["continuation"],
+					recursiveDefs,
+					[]
+				);
+			}
+			break;
+		case "SEND":
+			pendingVars.forEach((v) => {
+				recursiveDefs[v] = returnState;
+			});
+			// Just transform the continuation
+			returnState["continuation"] = transform(
+				returnState["continuation"],
+				recursiveDefs,
+				[]
+			);
+			break;
+		case "RECURSION_DEFINITION":
+			// New recursive variable that must be replaced by the next state. Push it to the list of
+			// pending variables, and transform the continuation. A list of pending recursive variables
+			// is needed for sequences of recursion definitions.
+			pendingVars.push(returnState["recursionVariable"]);
+			returnState = transform(
+				returnState["continuation"],
+				recursiveDefs,
+				pendingVars
+			);
+			break;
+		case "RECURSIVE_CALL":
+			// Replace the recursive call by a transition to the recursive definition
+			returnState = recursiveDefs[returnState["recursionVariable"]];
+			break;
+	}
+	return returnState;
+}
 
-// Function that initialises a router. It reads the protocol, checks the global type for errors, checks for 
+// Function that initialises a router. It reads the protocol, checks the global type for errors, checks for
 // relative wellformedness, and then computes the process corresponding to it.
-function initialise(protocolPath){
-    const protocol = JSON.parse(fs.readFileSync(protocolPath, "utf8"));
-    checker.checkGlobalType(protocol["globalType"], [], protocol["participants"]);
-    projector.checkWellformedness(protocol["globalType"], protocol["participants"]);
-    const p = protocol["implementingParty"];
-    const qs = [];
-    Object.keys(protocol["participants"]).forEach((participant) => {
-        if (participant != p) qs.push(participant);
-    });
-    const routerProcess = synthesize(protocol["globalType"], p, qs);
-    console.log(util.inspect(routerProcess, false, null, true));
+function initialise(protocolPath) {
+	const protocol = JSON.parse(fs.readFileSync(protocolPath, "utf8"));
+	checker.checkGlobalType(protocol["globalType"], [], protocol["participants"]);
+	projector.checkWellformedness(
+		protocol["globalType"],
+		protocol["participants"]
+	);
+	const p = protocol["implementingParty"];
+	const qs = [];
+	Object.keys(protocol["participants"]).forEach((participant) => {
+		if (participant != p) qs.push(participant);
+	});
+	const routerProcess = synthesize(protocol["globalType"], p, qs);
+	console.log(
+		util.inspect(transform(routerProcess, {}, []), false, null, true)
+	);
 }
 
 initialise("./Protocols/CSA.json");

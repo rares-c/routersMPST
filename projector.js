@@ -1,5 +1,4 @@
 const util = require("util");
-const fs = require("fs");
 
 // Function that obtains the relative projection of the pair (p,q) from the global type
 function relativeProjection(p, q, globalType) {
@@ -146,7 +145,7 @@ function ddep(p, q, globalType) {
 function checkWellformedness(globalType, participants) {
 	const participantList = Object.keys(participants);
 	for (let i = 0; i < participantList.length; i++) {
-		for (let j = i + 1; j < participantList; j++) {
+		for (let j = i + 1; j < participantList.length; j++) {
 			relativeProjection(participantList[i], participantList[j], globalType);
 		}
 	}

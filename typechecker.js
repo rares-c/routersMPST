@@ -1,4 +1,3 @@
-const fs = require("fs");
 
 // Function that checks a global type recursively, in a depth-first manner
 // 3 errors are checked:
