@@ -1,4 +1,5 @@
 const projector = require("./projector");
+const checker = require("./typechecker");
 const util = require("util");
 const fs = require("fs");
 
@@ -25,9 +26,9 @@ function synthesize(globalType, p, qs) {
 function synthesizeExchange(globalType, p, qs) {
 	const deps = [];
 	qs.forEach((q) => {
-		if (hdep(q, p, globalType) && q != globalType["receiver"]) deps.push(q);
+		if (hdep(q, p, globalType)) deps.push(q);
 	});
-	if (p == globalType["sender"] || p == globalType["receiver"]) {
+	if (p == globalType["sender"] || p == globalType["receiver"]) {        
 		// Receive the label
 		const returnState = {
 			actionType: "RECEIVE",
@@ -176,10 +177,20 @@ function hdep(p, q, exchange) {
 	);
 }
 
-const CSA = JSON.parse(fs.readFileSync("./Protocols/CSA.json", "utf8"));
-const p = CSA["implementingParty"];
-const qs = [];
-Object.keys(CSA["participants"]).forEach((participant) => {
-	if (participant != p) qs.push(participant);
-});
-console.log(util.inspect(synthesize(CSA["globalType"], p, qs), false, null, true));
+
+// Function that initialises a router. It reads the protocol, checks the global type for errors, checks for 
+// relative wellformedness, and then computes the process corresponding to it.
+function initialise(protocolPath){
+    const protocol = JSON.parse(fs.readFileSync(protocolPath, "utf8"));
+    checker.checkGlobalType(protocol["globalType"], [], protocol["participants"]);
+    projector.checkWellformedness(protocol["globalType"], protocol["participants"]);
+    const p = protocol["implementingParty"];
+    const qs = [];
+    Object.keys(protocol["participants"]).forEach((participant) => {
+        if (participant != p) qs.push(participant);
+    });
+    const routerProcess = synthesize(protocol["globalType"], p, qs);
+    console.log(util.inspect(routerProcess, false, null, true));
+}
+
+initialise("./Protocols/CSA.json");
