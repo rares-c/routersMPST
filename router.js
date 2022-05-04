@@ -1,262 +1,110 @@
 const projector = require("./projector");
 const checker = require("./typechecker");
-const util = require("util");
+const synthesizer = require("./synthesizer");
 const fs = require("fs");
+const express = require("express");
+const axios = require("axios").default;
+const handler = require("./handler");
 
-// Function that returns the router process corresponding to participant p and the given global type
-function synthesize(globalType, p, qs) {
-	switch (globalType["type"]) {
-		case "EXCHANGE":
-			return synthesizeExchange(globalType, p, qs);
-		case "RECURSION_DEFINITION":
-			return synthesizeDefinition(globalType, p, qs);
-		case "RECURSIVE_CALL":
-			return synthesizeCall(globalType, p, qs);
-		case "END":
-			return {
-				actionType: "END",
-			};
+let currentState, participants, lastReceiveState;
+
+// Function that forwards a received message to its corresponding receivers
+function forwardMessage(message) {
+	if (message["receiver"] != currentState["to"]) {
+		// The received message's recipient does not conform to the expected recipient
+		throw `The received message is intended for ${message["receiver"]}, while the message had to be sent to ${currentState["to"]}`;
 	}
-}
-
-// Function that returns the router process corresponding to a given exchange
-function synthesizeExchange(globalType, p, qs) {
-	const deps = [];
-	qs.forEach((q) => {
-		if (hdep(q, p, globalType)) deps.push(q);
-	});
-	if (p == globalType["sender"] || p == globalType["receiver"]) {
-		// Receive the label
-		const returnState = {
-			actionType: "RECEIVE",
-			messageType: "LABEL",
-			from: globalType["sender"],
-			branches: {},
-		};
-		Object.keys(globalType["branches"]).forEach((label) => {
-			// Send the label to all dependencies, and then receive the value & forward it to the recipient
-			returnState["branches"][label] = {
-				actionType: "SEND",
-				to: [...new Set([...deps, globalType["receiver"]])],
-				continuation: {},
-			};
-			if (globalType["branches"][label]["valueType"] == "unit") {
-				// If the message that was sent is supposed to have a unit type, no further value will be sent
-				returnState["branches"][label]["continuation"] = synthesize(
-					globalType["branches"][label]["protocolContinuation"],
-					p,
-					qs
-				);
-			} else {
-				// The message implies a value of some type, receive it from the sender and forward it to the receiver
-				returnState["branches"][label]["continuation"] = {
-					actionType: "RECEIVE",
-					messageType: globalType["branches"][label]["valueType"],
-					from: globalType["sender"],
-					continuation: {
-						actionType: "SEND",
-						to: [globalType["receiver"]],
-						continuation: synthesize(
-							globalType["branches"][label]["protocolContinuation"],
-							p,
-							qs
-						),
-					},
-				};
-			}
-		});
-		return returnState;
-	} else if (p != globalType["sender"] && p != globalType["receiver"]) {
-		const depon_s =
-			qs.includes(globalType["sender"]) &&
-			hdep(p, globalType["sender"], globalType);
-		const depon_r =
-			qs.includes(globalType["receiver"]) &&
-			hdep(p, globalType["receiver"], globalType);
-		if (depon_s && !depon_r) {
-			// p only depends on an output from the sender. Wait for a label from the sender, and forward it
-			// to p
-			const returnState = {
-				actionType: "RECEIVE",
-				messageType: "LABEL",
-				from: globalType["sender"],
-				branches: {},
-			};
-			Object.keys(globalType["branches"]).forEach((label) => {
-				// Send the label to p
-				returnState["branches"][label] = {
-					actionType: "SEND",
-					to: [p],
-					continuation: synthesize(
-						globalType["branches"][label]["protocolContinuation"],
-						p,
-						qs
-					),
-				};
-			});
-			return returnState;
-		} else if (!depon_s && depon_r) {
-			// p only depends on an input from the receiver. Wait for a label from the receiver, and forward it
-			// to p
-			const returnState = {
-				actionType: "RECEIVE",
-				messageType: "LABEL",
-				from: globalType["receiver"],
-				branches: {},
-			};
-			Object.keys(globalType["branches"]).forEach((label) => {
-				// Send the label to p
-				returnState["branches"][label] = {
-					actionType: "SEND",
-					to: [p],
-					continuation: synthesize(
-						globalType["branches"][label]["protocolContinuation"],
-						p,
-						qs
-					),
-				};
-			});
-			return returnState;
-		} else if (depon_s && depon_r) {
-			// p only depends on an input from the sender and on an input from the receiver. Wait for the label
-			// from the sender, forward it to p, wait for the input from the receiver,
-			const returnState = {
-				actionType: "RECEIVE",
-				messageType: "LABEL",
-				from: globalType["sender"],
-				branches: {},
-			};
-			Object.keys(globalType["branches"]).forEach((label) => {
-				// Send the label to p
-				returnState["branches"][label] = {
-					actionType: "SEND",
-					to: [p],
-					continuation: {
-						actionType: "RECEIVE",
-						messageType: "LABEL",
-						from: globalType["receiver"],
-						branches: {},
-					},
-				};
-				returnState["branches"][label]["continuation"]["branches"][label] =
-					synthesize(
-						globalType["branches"][label]["protocolContinuation"],
-						p,
-						qs
-					);
-			});
-			return returnState;
-		} else {
-			const firstBranchContinuation =
-				globalType["branches"][Object.keys(globalType["branches"])[0]][
-					"protocolContinuation"
-				];
-			return synthesize(firstBranchContinuation, p, qs);
-		}
-	}
-}
-
-// Function that returns the router process corresponding to a recursion definition
-function synthesizeDefinition(globalType, p, qs) {
-	const qsPrime = [];
-	qs.forEach((q) => {
-		if (projector.relativeProjection(p, q, globalType)["type"] != "END")
-			qsPrime.push(q);
-	});
-	if (qsPrime.length > 0) {
-		return {
-			actionType: "RECURSION_DEFINITION",
-			recursionVariable: globalType["recursionVariable"],
-			continuation: synthesize(globalType["protocolContinuation"], p, qsPrime),
-		};
-	} else {
-		return {
-			actionType: "END",
-		};
-	}
-}
-
-// Function that returns the router process corresponding to a recursive call
-function synthesizeCall(globalType, p, qs) {
-	return {
-		actionType: "RECURSIVE_CALL",
-		recursionVariable: globalType["recursionVariable"],
-	};
-}
-
-// Function that computes whether the given exchange affects the communication
-// between p and q
-function hdep(p, q, exchange) {
-	return (
-		exchange["type"] == "EXCHANGE" &&
-		(q == exchange["sender"] || q == exchange["receiver"]) &&
-		!projector.ddep(p, q, exchange)[0]
+	console.log(
+		`Forwarding message to actual receiver ${JSON.stringify(message)}`
 	);
+	// Forward the message to the actual receiver
+	axios
+		.post(participants[currentState["to"]], message)
+		.catch((err) => console.log(err));
+	// Forward the message to every dependency
+	currentState["deps"].forEach((d) => {
+		console.log(
+			`Forwarding message to dependency ${JSON.stringify({
+				sender: message["sender"],
+				receiver: d,
+				payload: message["payload"],
+			})}`
+		);
+		axios
+			.post(participants[d], {
+				sender: message["sender"],
+				receiver: d,
+				payload: message["payload"],
+			})
+			.catch((err) => console.log(err));
+	});
+	// Advance to the next state
+	currentState = currentState["continuation"];
 }
 
-// Function that transforms the router process into its corresponding state machine
-// The process is traversed recursively, recursive definitions are removed, and recursive calls are transformed
-// into transitions to previous states
-function transform(process, recursiveDefs, pendingVars) {
-	let returnState = JSON.parse(JSON.stringify(process));
-	switch (process["actionType"]) {
-		case "RECEIVE":
-			pendingVars.forEach((v) => {
-				recursiveDefs[v] = returnState;
-			});
-			if (process["messageType"] == "LABEL") {
-				// Need to transform each branch separately
-				Object.keys(process["branches"]).forEach((label) => {
-					returnState["branches"][label] = transform(
-						returnState["branches"][label],
-						recursiveDefs,
-						[]
-					);
-				});
-			} else {
-				// No possible branches, just transform the continuation
-				returnState["continuation"] = transform(
-					returnState["continuation"],
-					recursiveDefs,
-					[]
-				);
-			}
-			break;
-		case "SEND":
-			pendingVars.forEach((v) => {
-				recursiveDefs[v] = returnState;
-			});
-			// Just transform the continuation
-			returnState["continuation"] = transform(
-				returnState["continuation"],
-				recursiveDefs,
-				[]
-			);
-			break;
-		case "RECURSION_DEFINITION":
-			// New recursive variable that must be replaced by the next state. Push it to the list of
-			// pending variables, and transform the continuation. A list of pending recursive variables
-			// is needed for sequences of recursion definitions.
-			pendingVars.push(returnState["recursionVariable"]);
-			returnState = transform(
-				returnState["continuation"],
-				recursiveDefs,
-				pendingVars
-			);
-			break;
-		case "RECURSIVE_CALL":
-			// Replace the recursive call by a transition to the recursive definition
-			returnState = recursiveDefs[returnState["recursionVariable"]];
-			break;
+// Function that changes the current state of the finite state machine according to the received message.
+// It checks whether the router is supposed to receive a label/value, and moves on to forward it to the
+// actual receivers
+function messageReceived(message) {
+	console.log(`Received message ${JSON.stringify(message)}`);
+	if (currentState["actionType"] == "END") {
+		// Protocol finished, shouldn't receive any other messages
+		throw `Received message from ${message["sender"]}, protocol is finalised\nPROTOCOL VIOLATION`;
 	}
-	return returnState;
+	lastReceiveState = currentState;
+	if (message["sender"] != currentState["from"]) {
+		// Received a message from a different participant, protocol violation
+		throw `Received message from ${message["sender"]}, expected to receive message from ${currentState["from"]}\nPROTOCOL VIOLATION`;
+	} else if (
+		currentState["messageType"] == "LABEL" &&
+		typeof message["payload"] != "string"
+	) {
+		// Received a message that contains a value instead of a label
+		throw `The received message from ${message["sender"]} does not contain a label\nPROTOCOL VIOLATION`;
+	} else if (
+		currentState["messageType"] == "LABEL" &&
+		!(message["payload"] in currentState["branches"])
+	) {
+		// Received an unknown label from the correct sender
+		throw `The received message from ${message["sender"]} contains an unknown label\nPROTOCOL VIOLATION`;
+	} else if (
+		(currentState["messageType"] == "str" &&
+			typeof message["payload"] != "string") ||
+		(currentState["messageType"] == "int" &&
+			!Number.isInteger(message["payload"])) ||
+		(currentState["messageType"] == "bool" &&
+			typeof message["payload"] != "boolean")
+	) {
+		// The type of the actual value that was sent does not match the type of the expected value
+		throw `The received message from ${
+			message["sender"]
+		} contains a ${typeof message["payload"]}, while the router expected a ${
+			currentState["messageType"]
+		}`;
+	}
+	// The sender of the message matches the expected sender, and the payload conforms to the expected type.
+	// Forward the message to the required destinations.
+	if (currentState["messageType"] == "LABEL") {
+		currentState = currentState["branches"][message["payload"]];
+	} else {
+		currentState = currentState["continuation"];
+	}
+	if (currentState["actionType"] == "SEND") {
+		// After receiving a message, check if it needs to be forwarded to the actual receiver.
+		// This check is vital when the wrapped party depends on both the output of the sender and the
+		// input of a receiver, as the action sequence would be RECEIVE-SEND-RECEIVE
+		forwardMessage(message);
+	}
 }
 
 // Function that initialises a router. It reads the protocol, checks the global type for errors, checks for
 // relative wellformedness, and then computes the process corresponding to it.
 function initialise(protocolPath) {
+	// Parse protocol
 	const protocol = JSON.parse(fs.readFileSync(protocolPath, "utf8"));
+	// Check for the correct specification of the protocol
 	checker.checkGlobalType(protocol["globalType"], [], protocol["participants"]);
+	// Check for relative wellformedness
 	projector.checkWellformedness(
 		protocol["globalType"],
 		protocol["participants"]
@@ -266,10 +114,34 @@ function initialise(protocolPath) {
 	Object.keys(protocol["participants"]).forEach((participant) => {
 		if (participant != p) qs.push(participant);
 	});
-	const routerProcess = synthesize(protocol["globalType"], p, qs);
-	console.log(
-		util.inspect(transform(routerProcess, {}, []), false, null, true)
-	);
+	// Obtain the finite state machine corresponding to the given router process
+	currentState = synthesizer.createMachine(protocol["globalType"], p, qs);
+	participants = protocol["participants"];
+	// Create an HTTP server an wait for incoming message
+	const app = express();
+	app.use(express.json());
+	app.post("/", (req, res) => {
+		try {
+			// On each received message, transition to new states
+			messageReceived(req.body);
+			res.end();
+		} catch (error) {
+            // Protocol violation, delegate the handling of the error to the appropriate component
+			handler.panic(error);
+		}
+	});
+	app.listen(8080, () => {
+		console.log(`Router for ${p} listening on port 8080`);
+	});
 }
+
+// Function that reverts the current state of the router to the last state that contained a RECEIVE action
+function revertState() {
+	currentState = lastReceiveState;
+}
+
+module.exports = {
+	revertState,
+};
 
 initialise("./Protocols/CSA.json");

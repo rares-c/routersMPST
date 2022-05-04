@@ -1,0 +1,23 @@
+{
+  "name": "routersmpst",
+  "version": "1.0.0",
+  "description": "This tool was developed as part of the Bachelor's project of Rares Dobre. Supervisors: Bas van den Heuvel, Jorge A. Pérez.",
+  "main": "router.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rares-c/routersMPST.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rares-c/routersMPST/issues"
+  },
+  "homepage": "https://github.com/rares-c/routersMPST#readme",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "express": "^4.18.1"
+  }
+}

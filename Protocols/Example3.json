@@ -1,10 +1,10 @@
 {
 	"implementingParty": "p",
 	"participants": {
-		"p": "192.168.0.0",
-		"q": "192.168.0.0",
-		"r": "192.168.0.0",
-		"s": "192.168.0.0"
+		"p": "http://localhost:8081",
+		"q": "http://localhost:8081",
+		"r": "http://localhost:8081",
+		"s": "http://localhost:8081"
 	},
 	"globalType": {
 		"type": "EXCHANGE",
