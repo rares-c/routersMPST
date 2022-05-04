@@ -23,7 +23,9 @@ For now, the router is configured to listen on port `8080` for HTTP requests. Th
 node testserver.js
 ```
 
-HTTP requests can now be sent to the router by sending them to the address `http://localhost:8080`. Tools like Insomnia or Postman come in handy, because they allow us to specify what types of requests to do and more. The routers are configured to listen to HTTP POST requests on the root ('/') path. An example of an acceptable HTTP request is:
+in a different terminal window.
+
+HTTP requests can now be sent to the router by sending them to the address `http://localhost:8080`. Tools like Insomnia [[1]](https://insomnia.rest/) or Postman [[2]](https://www.postman.com/) come in handy, because they allow us to specify what types of requests to do and more. The routers are configured to listen to HTTP POST requests on the root ('/') path. An example of an acceptable HTTP request is:
 ```
 URL: http://localhost:8080
 Method: POST
