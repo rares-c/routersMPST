@@ -4,7 +4,7 @@ const synthesizer = require("./synthesizer");
 const fs = require("fs");
 const express = require("express");
 const axios = require("axios").default;
-const handler = require("./handler");
+const util = require("util");
 
 let currentState, participants, lastReceiveState;
 
@@ -12,7 +12,7 @@ let currentState, participants, lastReceiveState;
 function forwardMessage(message) {
 	if (message["receiver"] != currentState["to"]) {
 		// The received message's recipient does not conform to the expected recipient
-		throw `The received message is intended for ${message["receiver"]}, while the message had to be sent to ${currentState["to"]}`;
+		throw `The received message is intended for ${message["receiver"]}, while the message had to be sent to ${currentState["to"]}\nPROTOCOL VIOLATION`;
 	}
 	console.log(
 		`Forwarding message to actual receiver ${JSON.stringify(message)}`
@@ -97,6 +97,20 @@ function messageReceived(message) {
 	}
 }
 
+// Function that handles the error that occured by logging it onto the console
+// and exiting the process
+function panic(error) {
+	console.log(error);
+	process.exit(-1);
+}
+
+// Function that handles the error that occured by logging it onto the console
+// and attempting to recover the last "RECEIVE" state
+function recover(error) {
+	console.log(error);
+    currentState = lastReceiveState;
+}
+
 // Function that initialises a router. It reads the protocol, checks the global type for errors, checks for
 // relative wellformedness, and then computes the process corresponding to it.
 function initialise(protocolPath) {
@@ -126,22 +140,14 @@ function initialise(protocolPath) {
 			messageReceived(req.body);
 			res.end();
 		} catch (error) {
+            res.end();
             // Protocol violation, delegate the handling of the error to the appropriate component
-			handler.panic(error);
+			recover(error, currentState, lastReceiveState);
 		}
 	});
 	app.listen(8080, () => {
 		console.log(`Router for ${p} listening on port 8080`);
 	});
 }
-
-// Function that reverts the current state of the router to the last state that contained a RECEIVE action
-function revertState() {
-	currentState = lastReceiveState;
-}
-
-module.exports = {
-	revertState,
-};
 
 initialise("./Protocols/CSA.json");
