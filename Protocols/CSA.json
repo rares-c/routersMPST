@@ -1,5 +1,6 @@
 {
 	"implementingParty": "c",
+    "routerPort": 8080,
 	"participants": {
 		"c": "http://localhost:8081",
 		"s": "http://localhost:8081",

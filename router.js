@@ -4,7 +4,15 @@ const synthesizer = require("./synthesizer");
 const fs = require("fs");
 const express = require("express");
 const axios = require("axios").default;
-const util = require("util");
+const axiosRetry = require("axios-retry");
+
+// Set HTTP requests to automatically retry 3 times before timing out
+axiosRetry(axios, {
+	retries: 3,
+	retryDelay: (retryCount) => {
+		return retryCount * 4000;
+	},
+});
 
 let currentState, participants, lastReceiveState;
 
@@ -18,9 +26,13 @@ function forwardMessage(message) {
 		`Forwarding message to actual receiver ${JSON.stringify(message)}`
 	);
 	// Forward the message to the actual receiver
-	axios
-		.post(participants[currentState["to"]], message)
-		.catch((err) => console.log(err));
+	axios.post(participants[currentState["to"]], message).catch((err) => {
+		console.log(
+			`Error occurred when communicating with ${currentState["to"]}`
+		);
+        // Communication with other routers cannot happen, even after 3 retries. Quit the process.
+        process.exit(-1);
+	});
 	// Forward the message to every dependency
 	currentState["deps"].forEach((d) => {
 		console.log(
@@ -36,7 +48,13 @@ function forwardMessage(message) {
 				receiver: d,
 				payload: message["payload"],
 			})
-			.catch((err) => console.log(err));
+			.catch((err) => {
+				console.log(
+					`Error occurred when communicating with ${d}`
+				);
+                // Communication with other routers cannot happen, even after 3 retries. Quit the process.
+                process.exit(-1);
+			});
 	});
 	// Advance to the next state
 	currentState = currentState["continuation"];
@@ -97,18 +115,18 @@ function messageReceived(message) {
 	}
 }
 
-// Function that handles the error that occured by logging it onto the console
+// Function that handles the error that occurred by logging it onto the console
 // and exiting the process
 function panic(error) {
 	console.log(error);
 	process.exit(-1);
 }
 
-// Function that handles the error that occured by logging it onto the console
+// Function that handles the error that occurred by logging it onto the console
 // and attempting to recover the last "RECEIVE" state
 function recover(error) {
 	console.log(error);
-    currentState = lastReceiveState;
+	currentState = lastReceiveState;
 }
 
 // Function that initialises a router. It reads the protocol, checks the global type for errors, checks for
@@ -140,12 +158,12 @@ function initialise(protocolPath) {
 			messageReceived(req.body);
 			res.end();
 		} catch (error) {
-            res.end();
-            // Protocol violation, delegate the handling of the error to the appropriate component
-			recover(error, currentState, lastReceiveState);
+			res.end();
+			// Protocol violation, delegate the handling of the error to the appropriate function
+			panic(error);
 		}
 	});
-	app.listen(8080, () => {
+	app.listen(protocol["routerPort"], () => {
 		console.log(`Router for ${p} listening on port 8080`);
 	});
 }
