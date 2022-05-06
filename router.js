@@ -17,7 +17,9 @@ axiosRetry(axios, {
 let currentState, participants, lastReceiveState;
 
 // Function that forwards a received message to its corresponding receivers
-function forwardMessage(message) {
+async function forwardMessage(message, p) {
+	// Keep track of all the requests that were sent in order to wait for them if the protocol is finalised
+	const requests = [];
 	if (message["receiver"] != currentState["to"]) {
 		// The received message's recipient does not conform to the expected recipient
 		throw `The received message is intended for ${message["receiver"]}, while the message had to be sent to ${currentState["to"]}\nPROTOCOL VIOLATION`;
@@ -26,49 +28,54 @@ function forwardMessage(message) {
 		`Forwarding message to actual receiver ${JSON.stringify(message)}`
 	);
 	// Forward the message to the actual receiver
-	axios.post(participants[currentState["to"]], message).catch((err) => {
-		console.log(
-			`Error occurred when communicating with ${currentState["to"]}`
-		);
-        // Communication with other routers cannot happen, even after 3 retries. Quit the process.
-        process.exit(-1);
-	});
+	requests.push(
+		axios.post(participants[currentState["to"]], message).catch((err) => {
+			console.log(
+				`Error occurred when communicating with ${currentState["to"]}`
+			);
+			// Communication with other routers cannot happen, even after 3 retries. Quit the process.
+			process.exit(-1);
+		})
+	);
 	// Forward the message to every dependency
 	currentState["deps"].forEach((d) => {
 		console.log(
 			`Forwarding message to dependency ${JSON.stringify({
-				sender: message["sender"],
+				sender: p,
 				receiver: d,
 				payload: message["payload"],
 			})}`
 		);
-		axios
-			.post(participants[d], {
-				sender: message["sender"],
-				receiver: d,
-				payload: message["payload"],
-			})
-			.catch((err) => {
-				console.log(
-					`Error occurred when communicating with ${d}`
-				);
-                // Communication with other routers cannot happen, even after 3 retries. Quit the process.
-                process.exit(-1);
-			});
+		requests.push(
+			axios
+				.post(participants[d], {
+					sender: p,
+					receiver: d,
+					payload: message["payload"],
+				})
+				.catch((err) => {
+					console.log(`Error occurred when communicating with ${d}`);
+					// Communication with other routers cannot happen, even after 3 retries. Quit the process.
+					process.exit(-1);
+				})
+		);
 	});
 	// Advance to the next state
 	currentState = currentState["continuation"];
+	if (currentState["actionType"] == "END") {
+		// Protocol finished, safe to quit the router
+		console.log("Protocol finalised. Shutting down router.");
+		// Wait for all requests to settle, such that all the other routers have received the intended messages
+		await Promise.all(requests);
+		process.exit(0);
+	}
 }
 
 // Function that changes the current state of the finite state machine according to the received message.
 // It checks whether the router is supposed to receive a label/value, and moves on to forward it to the
 // actual receivers
-function messageReceived(message) {
+function messageReceived(message, p) {
 	console.log(`Received message ${JSON.stringify(message)}`);
-	if (currentState["actionType"] == "END") {
-		// Protocol finished, shouldn't receive any other messages
-		throw `Received message from ${message["sender"]}, protocol is finalised\nPROTOCOL VIOLATION`;
-	}
 	lastReceiveState = currentState;
 	if (message["sender"] != currentState["from"]) {
 		// Received a message from a different participant, protocol violation
@@ -107,11 +114,16 @@ function messageReceived(message) {
 	} else {
 		currentState = currentState["continuation"];
 	}
+	if (currentState["actionType"] == "END") {
+		// Protocol finished, safe to quit the router
+		console.log("Protocol finalised. Shutting down router.");
+		process.exit(0);
+	}
 	if (currentState["actionType"] == "SEND") {
 		// After receiving a message, check if it needs to be forwarded to the actual receiver.
 		// This check is vital when the wrapped party depends on both the output of the sender and the
 		// input of a receiver, as the action sequence would be RECEIVE-SEND-RECEIVE
-		forwardMessage(message);
+		forwardMessage(message, p);
 	}
 }
 
@@ -155,7 +167,7 @@ function initialise(protocolPath) {
 	app.post("/", (req, res) => {
 		try {
 			// On each received message, transition to new states
-			messageReceived(req.body);
+			messageReceived(req.body, p);
 			res.end();
 		} catch (error) {
 			res.end();
@@ -164,8 +176,9 @@ function initialise(protocolPath) {
 		}
 	});
 	app.listen(protocol["routerPort"], () => {
-		console.log(`Router for ${p} listening on port 8080`);
+		console.log(`Router for ${p} listening on port ${protocol["routerPort"]}`);
 	});
 }
 
-initialise("./Protocols/CSA.json");
+// Initialise the router with the protocol given as an argument
+initialise(process.env.PROTOCOL_PATH);

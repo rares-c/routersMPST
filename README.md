@@ -7,32 +7,49 @@ This tool was developed as part of the Bachelor's project of Rares Dobre. Superv
 - npm - installation guide [link](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
 
 ## How to run the project
-To run the router, the modules have to be installed first, and then the router can be started. Execute
+To run a router process for a given participant, the modules have to be installed first, and then the router can be started. Execute
 
 ```
 npm install
-node router.js
 ``` 
 
-
-in a terminal window.
-
-For now, the router is configured to listen on port `8080` for HTTP requests. There is a test server defined to inspect all the messages forwarded by the router in `testserver.js`. To start the test server, simply execute
+in a terminal window. After all the node modules have been installed, the router processes can be started. Each router process needs the specification of the protocol in JSON format. Inside the JSON file corresponding to the given protocol, the implementing party must be specified, the port on which the router will listen, the other participants, and the global type. For an example, please see the protocol specification from `./CSA Suite/authorization/CSA_authorization.JSON`. Please note that there is no need to have separate files for each implementing party, as the same file can be edited after starting a router process such that it fits a different implementing party. Yet, in the current CSA suite, different specification files were used for conveniency. After defining the protocol specification, the routers can be started. To start a router process, execute:
 
 ```
-node testserver.js
+PROTOCOL_PATH=<PATH> node router.js
 ```
 
-in a different terminal window.
+Where `<PATH>` is replaced by the path to the protocol specification file. The routers must be started before the actual parties, such that the scenario where the implementing parties are trying to communicate with the routers, but the routers are offline can be avoided. After all routers are online, the participants themselves can be started.
 
-HTTP requests can now be sent to the router by sending them to the address `http://localhost:8080`. Tools like Insomnia [[1]](https://insomnia.rest/) or Postman [[2]](https://www.postman.com/) come in handy, because they allow us to specify what types of requests to do and more. The routers are configured to listen to HTTP POST requests on the root ('/') path. An example of an acceptable HTTP request is:
+--- 
+To exeute the CSA test suite, the following commands must be executed in order. We recommend 6 different terminal windows to thoroughly observe the progress of the routers and the message exchanges. 2 terminal windows are needed for each participant, one for the implementation, and one for the router.
+
+For the Client Router, execute it one terminal:
 ```
-URL: http://localhost:8080
-Method: POST
-Body: {
-    "sender": "s",
-    "receiver": "c",
-    "payload": "login"
-}
+PROTOCOL_PATH="./CSA Suite/client/CSA_client.json" node router.js
 ```
-Upon receiving the HTTP request, the router will log its actions, such as the receipt of a message, to the console.
+For the Server Router, execute in a different terminal:
+```
+PROTOCOL_PATH="./CSA Suite/server/CSA_server.json" node router.js
+```
+For the Authorization Router, execute in a different terminal:
+```
+PROTOCOL_PATH="./CSA Suite/authorization/CSA_authorization.json" node router.js
+```
+
+Next, the Client service can be started using: 
+```
+node CSA\ suite/client/client.js
+```
+
+Afterwards, the Authorization service can be started:
+```
+node CSA\ suite/authorization/authorization.js
+```
+
+Lastly, the Server can be started using:
+```
+node CSA\ suite/server/server.js
+```
+
+All commands must be executed in the root directory of the repository.
