@@ -20,7 +20,7 @@ app.post("/", (req, res) => {
         axios.post(routerAddress, {
             sender: "c",
             receiver: "a",
-            payload: "passlllllwd"
+            payload: "passwd"
         }).catch((err) => {
             console.log(
                 `Error occurred when communicating with the router`
