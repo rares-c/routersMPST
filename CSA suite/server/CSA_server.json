@@ -1,0 +1,63 @@
+{
+	"implementingParty": "s",
+    "routerPort": 8001,
+	"participants": {
+		"c": "http://localhost:8000",
+		"s": "http://localhost:8081",
+		"a": "http://localhost:8002"
+	},
+	"globalType": {
+		"type": "RECURSION_DEFINITION",
+		"recursionVariable": "X",
+		"protocolContinuation": {
+			"type": "EXCHANGE",
+			"sender": "s",
+			"receiver": "c",
+			"branches": {
+				"login": {
+					"valueType": "unit",
+					"protocolContinuation": {
+						"type": "EXCHANGE",
+						"sender": "c",
+						"receiver": "a",
+						"branches": {
+							"passwd": {
+								"valueType": "str",
+								"protocolContinuation": {
+									"type": "EXCHANGE",
+									"sender": "a",
+									"receiver": "s",
+									"branches": {
+										"auth": {
+											"valueType": "bool",
+											"protocolContinuation": {
+												"type": "RECURSIVE_CALL",
+												"recursionVariable": "X"
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"quit": {
+					"valueType": "unit",
+					"protocolContinuation": {
+						"type": "EXCHANGE",
+						"sender": "c",
+						"receiver": "a",
+						"branches": {
+							"quit": {
+								"valueType": "unit",
+								"protocolContinuation": {
+                                    "type": "END"
+                                }
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

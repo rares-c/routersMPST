@@ -1,0 +1,108 @@
+{
+	"implementingParty": "p",
+	"participants": {
+		"p": "http://localhost:8081",
+		"q": "http://localhost:8081",
+		"r": "http://localhost:8081",
+		"s": "http://localhost:8081"
+	},
+	"globalType": {
+		"type": "EXCHANGE",
+		"sender": "p",
+		"receiver": "q",
+		"branches": {
+			"1": {
+				"valueType": "Sa",
+				"protocolContinuation": {
+                    "type": "EXCHANGE",
+                    "sender": "p",
+                    "receiver": "r",
+                    "branches": {
+                        "1": {
+                            "valueType": "Sb",
+                            "protocolContinuation": {
+                                "type": "EXCHANGE",
+                                "sender": "p",
+                                "receiver": "s",
+                                "branches": {
+                                    "1": {
+                                        "valueType": "Sc",
+                                        "protocolContinuation": {
+                                            "type": "EXCHANGE",
+                                            "sender": "q",
+                                            "receiver": "r",
+                                            "branches": {
+                                                "1": {
+                                                    "valueType": "Sd",
+                                                    "protocolContinuation": {
+                                                        "type": "EXCHANGE",
+                                                        "sender": "q",
+                                                        "receiver": "s",
+                                                        "branches": {
+                                                            "1": {
+                                                                "valueType": "Se",
+                                                                "protocolContinuation": {
+                                                                    "type": "END"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+			},
+            "2": {
+				"valueType": "Sf",
+				"protocolContinuation": {
+                    "type": "EXCHANGE",
+                    "sender": "r",
+                    "receiver": "p",
+                    "branches": {
+                        "2": {
+                            "valueType": "Sg",
+                            "protocolContinuation": {
+                                "type": "EXCHANGE",
+                                "sender": "s",
+                                "receiver": "p",
+                                "branches": {
+                                    "2": {
+                                        "valueType": "Sh",
+                                        "protocolContinuation": {
+                                            "type": "EXCHANGE",
+                                            "sender": "r",
+                                            "receiver": "q",
+                                            "branches": {
+                                                "2": {
+                                                    "valueType": "Si",
+                                                    "protocolContinuation": {
+                                                        "type": "EXCHANGE",
+                                                        "sender": "s",
+                                                        "receiver": "q",
+                                                        "branches": {
+                                                            "2": {
+                                                                "valueType": "Sj",
+                                                                "protocolContinuation": {
+                                                                    "type": "END"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+			}
+		}
+	}
+}
