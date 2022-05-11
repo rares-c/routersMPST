@@ -60,6 +60,16 @@ app.post("/", (req, res) => {
     }
 });
 
+// Respond with an empty object to signal that the party is online
+app.get("/api/alive", (req, res) => {
+    res.end();
+});
+
+// Party can commence the transmission
+app.post("/api/alive", (req, res) => {
+    res.end();
+});
+
 // Start the client server
 app.listen(clientPort, () => {
     console.log(`Client listening on ${clientPort}`);
