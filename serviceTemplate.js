@@ -1,6 +1,10 @@
-// Express is used to handle incoming HTTP requests
+// Express is a framework of Node.js that facilitates the development
+// of HTTP servers. It abstracts away a lot of uneccessary details provided
+// by the basic functionality of Node.js for creating HTTP servers. In the
+// current template, it is used to listen for HTTP requests on the routes
+// "/", "/api/alive", and to format the contents of the requests as JSON
 const express = require("express");
-// Axios is used to make HTTP requests to the router
+// Axios is a Node.js package that is used to make HTTP requests to the router
 const axios = require("axios");
 
 const app = express();

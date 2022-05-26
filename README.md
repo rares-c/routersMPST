@@ -19,7 +19,7 @@ in a terminal window. After all the node modules have been installed, the router
 PROTOCOL_PATH=<PATH> node router.js
 ```
 
-Where `<PATH>` is replaced by the path to the protocol specification file. The actual parties must be started before the routers, because the implementing parties must wait for the "green light" from the routers. That is, once the routers check that the network of routers is up and running, and that every router is connected to its implementing party, the communication can begin. Thus, first start up all the implementing parties, then start all the routers. Once all the routers are connected, the transmission will commence.
+Where `<PATH>` is replaced by the path to the protocol specification file. The actual participant implementations must be started before the routers, because the participants must wait for the "green light" from the routers. That is, once the routers check that the network of routers is up and running, and that every router is connected to its participant implementation, the communication can begin. Thus, first start up all the participant implementations, then start all the routers. Once all the routers are connected, the transmission will commence.
 
 --- 
 To exeute the CSA test suite, the following commands must be executed. We recommend 6 different terminal windows to thoroughly observe the progress of the routers and the message exchanges. 2 terminal windows are needed for each participant, one for the implementation, and one for the router. First, start up all the implementing parties.
@@ -41,7 +41,7 @@ node CSA\ suite/server/server.js
 
 Next, start up all the routers.
 
-For the Client Router, execute it one terminal:
+For the Client Router, execute in a terminal:
 ```
 PROTOCOL_PATH="./CSA Suite/client/CSA_client.json" node router.js
 ```

@@ -156,25 +156,37 @@ async function checkParty(participant, qs, participants) {
 	waitOnNetwork(participant, qs, participants);
 }
 
-// Function that checks whether the rest of the network is online
+// Function that checks whether the rest of the network is online. The function polls every 
+// router to check whether it is online or not through GET requests on the route "/api/alive".
+// Routers that fail to return an appropriate response are marked as offline, and added to the
+// list of failed routers. The function then retries all the routers that were offline in the
+// previous iteration, until all the routers are reachable.
 async function waitOnNetwork(p, qs, participants) {
 	const online = {};
 	while (qs.length > 0) {
+        // Keep track of the routers that fail to return an appropriate response in the current iteration
 		const failed = [];
+        // Poll every router
 		for (let i = 0; i < qs.length; i++) {
 			await axios
 				.get(participants[qs[i]] + "/api/alive", { timeout: 100 })
 				.then((_) => {
+                    // Router responded, it is online.
 					console.log(`Router for participant ${qs[i]} ` + chalk.green("online"));
 				})
 				.catch((_) => {
+                    // Error occurred, router unreachable
 					if (!(qs[i] in online)) {
+                        // Only log that the router is offline if this is the first attempt to contact it
 						console.log(`Router for participant ${qs[i]} ` + chalk.red("not online"));
 						online[qs[i]] = false;
 					}
+                    // Add the current router to the list of failed routers
 					failed.push(qs[i]);
 				});
 		}
+        // In the next iteration, retry just the routers that failed to respond. If all 
+        // routers responded successfully, the list will be empty and the loop will stop.
 		qs = failed;
 	}
 	networkOnline = true;
