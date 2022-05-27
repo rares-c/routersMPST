@@ -4,17 +4,9 @@ const synthesizer = require("./synthesizer");
 const fs = require("fs");
 const express = require("express");
 const axios = require("axios").default;
-const axiosRetry = require("axios-retry");
+const chalk = require("chalk");
 
-// Set HTTP requests to automatically retry 3 times before timing out
-axiosRetry(axios, {
-	retries: 3,
-	retryDelay: (retryCount) => {
-		return retryCount * 4000;
-	},
-});
-
-let currentState, participants, lastReceiveState;
+let currentState, participants, lastReceiveState, partyOnline, networkOnline;
 
 // Function that forwards a received message to its corresponding receivers
 async function forwardMessage(message, p) {
@@ -141,9 +133,82 @@ function recover(error) {
 	currentState = lastReceiveState;
 }
 
+// Function that checks whether the party at the given address is online through a GET request to
+// the route /api/alive
+async function checkParty(participant, qs, participants) {
+	await axios
+		.get(participants[participant] + "/api/alive", { timeout: 100 })
+		.then((_) => {
+			console.log(
+				`Implementing party ${participant} ` + chalk.green("online") + "."
+			);
+			partyOnline = true;
+		})
+		.catch((_) => {
+			console.log(
+				`Check party for participant ${participant}` +
+					chalk.red("failed") +
+					`. Aborting...`
+			);
+			process.exit(-1);
+		});
+	// Check the status of the rest of the network
+	waitOnNetwork(participant, qs, participants);
+}
+
+// Function that checks whether the rest of the network is online. The function polls every 
+// router to check whether it is online or not through GET requests on the route "/api/alive".
+// Routers that fail to return an appropriate response are marked as offline, and added to the
+// list of failed routers. The function then retries all the routers that were offline in the
+// previous iteration, until all the routers are reachable.
+async function waitOnNetwork(p, qs, participants) {
+	const online = {};
+	while (qs.length > 0) {
+        // Keep track of the routers that fail to return an appropriate response in the current iteration
+		const failed = [];
+        // Poll every router
+		for (let i = 0; i < qs.length; i++) {
+			await axios
+				.get(participants[qs[i]] + "/api/alive", { timeout: 100 })
+				.then((_) => {
+                    // Router responded, it is online.
+					console.log(`Router for participant ${qs[i]} ` + chalk.green("online"));
+				})
+				.catch((_) => {
+                    // Error occurred, router unreachable
+					if (!(qs[i] in online)) {
+                        // Only log that the router is offline if this is the first attempt to contact it
+						console.log(`Router for participant ${qs[i]} ` + chalk.red("not online"));
+						online[qs[i]] = false;
+					}
+                    // Add the current router to the list of failed routers
+					failed.push(qs[i]);
+				});
+		}
+        // In the next iteration, retry just the routers that failed to respond. If all 
+        // routers responded successfully, the list will be empty and the loop will stop.
+		qs = failed;
+	}
+	networkOnline = true;
+	// Signal the implementing party that the transmission can commence
+	signalParty(p, participants[p]);
+}
+
+// Function that sends the given party a message to confirm that the communication can begin
+async function signalParty(p, address) {
+	await axios.post(address + "/api/alive").catch((_) => {
+		console.log(
+			`Could not communicate with party ${p} to begin the communication. Aborting...`
+		);
+		process.exit(-1);
+	});
+}
+
 // Function that initialises a router. It reads the protocol, checks the global type for errors, checks for
 // relative wellformedness, and then computes the process corresponding to it.
 function initialise(protocolPath) {
+	partyOnline = false;
+	networkOnline = false;
 	// Parse protocol
 	const protocol = JSON.parse(fs.readFileSync(protocolPath, "utf8"));
 	// Check for the correct specification of the protocol
@@ -165,6 +230,13 @@ function initialise(protocolPath) {
 	const app = express();
 	app.use(express.json());
 	app.post("/", (req, res) => {
+		if (!networkOnline || !partyOnline) {
+			console.log(
+				`Received message ${req.body}, but the handshake was not complete`
+			);
+			res.end();
+			return;
+		}
 		try {
 			// On each received message, transition to new states
 			messageReceived(req.body, p);
@@ -175,9 +247,15 @@ function initialise(protocolPath) {
 			panic(error);
 		}
 	});
+	app.get("/api/alive", (_, res) => {
+		if (!partyOnline) res.status(400);
+		res.end();
+	});
 	app.listen(protocol["routerPort"], () => {
 		console.log(`Router for ${p} listening on port ${protocol["routerPort"]}`);
 	});
+	// Check whether implementing party is online
+	checkParty(p, [...qs], participants);
 }
 
 // Initialise the router with the protocol given as an argument

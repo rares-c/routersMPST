@@ -19,25 +19,12 @@ in a terminal window. After all the node modules have been installed, the router
 PROTOCOL_PATH=<PATH> node router.js
 ```
 
-Where `<PATH>` is replaced by the path to the protocol specification file. The routers must be started before the actual parties, such that the scenario where the implementing parties are trying to communicate with the routers, but the routers are offline can be avoided. After all routers are online, the participants themselves can be started.
+Where `<PATH>` is replaced by the path to the protocol specification file. The actual participant implementations must be started before the routers, because the participants must wait for the "green light" from the routers. That is, once the routers check that the network of routers is up and running, and that every router is connected to its participant implementation, the communication can begin. Thus, first start up all the participant implementations, then start all the routers. Once all the routers are connected, the transmission will commence.
 
 --- 
-To exeute the CSA test suite, the following commands must be executed in order. We recommend 6 different terminal windows to thoroughly observe the progress of the routers and the message exchanges. 2 terminal windows are needed for each participant, one for the implementation, and one for the router.
+To exeute the CSA test suite, the following commands must be executed. We recommend 6 different terminal windows to thoroughly observe the progress of the routers and the message exchanges. 2 terminal windows are needed for each participant, one for the implementation, and one for the router. First, start up all the implementing parties.
 
-For the Client Router, execute it one terminal:
-```
-PROTOCOL_PATH="./CSA Suite/client/CSA_client.json" node router.js
-```
-For the Server Router, execute in a different terminal:
-```
-PROTOCOL_PATH="./CSA Suite/server/CSA_server.json" node router.js
-```
-For the Authorization Router, execute in a different terminal:
-```
-PROTOCOL_PATH="./CSA Suite/authorization/CSA_authorization.json" node router.js
-```
-
-Next, the Client service can be started using: 
+The Client service can be started using: 
 ```
 node CSA\ suite/client/client.js
 ```
@@ -52,4 +39,19 @@ Lastly, the Server can be started using:
 node CSA\ suite/server/server.js
 ```
 
-All commands must be executed in the root directory of the repository.
+Next, start up all the routers.
+
+For the Client Router, execute in a terminal:
+```
+PROTOCOL_PATH="./CSA Suite/client/CSA_client.json" node router.js
+```
+For the Server Router, execute in a different terminal:
+```
+PROTOCOL_PATH="./CSA Suite/server/CSA_server.json" node router.js
+```
+For the Authorization Router, execute in a different terminal:
+```
+PROTOCOL_PATH="./CSA Suite/authorization/CSA_authorization.json" node router.js
+```
+
+The start up order of the implementing parties is irrelevant. Same holds for the routers. However, all implementing parties must be started before the actual routers. Failure to start an implementing party before its router will yield an error, and the router process will terminate. 

@@ -68,6 +68,16 @@ app.post("/", (req, res) => {
     }
 });
 
+// Respond with an empty object to signal that the party is online
+app.get("/api/alive", (req, res) => {
+    res.end();
+});
+
+// Party can commence the transmission
+app.post("/api/alive", (req, res) => {
+    res.end();
+});
+
 // Start the authorization server
 app.listen(authorizationPort, () => {
     console.log(`Authorization listening on ${authorizationPort}`);
