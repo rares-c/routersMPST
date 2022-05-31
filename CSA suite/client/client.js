@@ -1,6 +1,12 @@
 const express = require("express");
 const axios = require("axios");
+const readline = require("readline");
 
+// Create an interface for reading the user's input from the console
+const rl = readline.createInterface({
+	input: process.stdin,
+	output: process.stdout,
+});
 const app = express();
 app.use(express.json());
 
@@ -16,32 +22,35 @@ app.post("/", (req, res) => {
 	if (req.body.payload == "login") {
 		// The server asked the client to login
 		console.log("Attempting to authorize");
-		// The client must now send the authorization server the label passwd together with a password
-		axios
-			.post(routerAddress, {
-				sender: "c",
-				receiver: "a",
-				payload: "passwd",
-			})
-			.catch((_) => {
-				console.log(`Error occurred when communicating with the router`);
-				// Communication with the router cannot happen. Quit the process.
-				process.exit(-1);
-			})
-			.then((_) => {
-				// Send the password after the passwd label has been transmitted
-				axios
-					.post(routerAddress, {
-						sender: "c",
-						receiver: "a",
-						payload: "notSecretPassword",
-					})
-					.catch((_) => {
-						console.log(`Error occurred when communicating with the router`);
-						// Communication with the router cannot happen. Quit the process.
-						process.exit(-1);
-					});
-			});
+		// Prompt the user for its password
+		rl.question("Enter your password: ", (password) => {
+			// The client must now send the authorization server the label passwd together with its password
+			axios
+				.post(routerAddress, {
+					sender: "c",
+					receiver: "a",
+					payload: "passwd",
+				})
+				.catch((_) => {
+					console.log(`Error occurred when communicating with the router`);
+					// Communication with the router cannot happen. Quit the process.
+					process.exit(-1);
+				})
+				.then((_) => {
+					// Send the password after the passwd label has been transmitted
+					axios
+						.post(routerAddress, {
+							sender: "c",
+							receiver: "a",
+							payload: password,
+						})
+						.catch((_) => {
+							console.log(`Error occurred when communicating with the router`);
+							// Communication with the router cannot happen. Quit the process.
+							process.exit(-1);
+						});
+				});
+		});
 	} else {
 		// The server asked the client to quit
 		console.log("Quitting the protocol");
@@ -59,6 +68,7 @@ app.post("/", (req, res) => {
 			})
 			.then(() => {
 				// Protocol is terminated
+				rl.close();
 				process.exit(0);
 			});
 	}

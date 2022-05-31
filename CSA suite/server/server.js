@@ -23,8 +23,38 @@ app.post("/", (req, res) => {
 	} else {
 		// In this state the server receives the boolean from the authorization server denoting whether the
 		// client is authorized or not
-		if (req.body.payload) console.log("Client authorized!");
-		else console.log("Authorization denied!");
+		if (req.body.payload) {
+			console.log("Client authorized!");
+			// Send the quit label to the client, authorization successful
+			axios
+				.post(routerAddress, {
+					sender: "s",
+					receiver: "c",
+					payload: "quit",
+				})
+				.catch((_) => {
+					console.log(`Error occurred when communicating with the router`);
+					// Communication with the router cannot happen. Quit the process.
+					process.exit(-1);
+				})
+				.then(() => {
+					process.exit(0);
+				});
+		} else {
+			console.log("Authorization denied!");
+			// Retry the authorization
+			axios
+				.post(routerAddress, {
+					sender: "s",
+					receiver: "c",
+					payload: "login",
+				})
+				.catch((_) => {
+					console.log(`Error occurred when communicating with the router`);
+					// Communication with the router cannot happen. Quit the process.
+					process.exit(-1);
+				});
+		}
 		state = 1;
 	}
 });
@@ -51,23 +81,6 @@ app.post("/api/alive", (req, res) => {
 				// Communication with the router cannot happen. Quit the process.
 				process.exit(-1);
 			});
-		setTimeout(() => {
-			// Send the quit label to the client after 10 seconds
-			axios
-				.post(routerAddress, {
-					sender: "s",
-					receiver: "c",
-					payload: "quit",
-				})
-				.catch((err) => {
-					console.log(`Error occurred when communicating with the router`);
-					// Communication with the router cannot happen. Quit the process.
-					process.exit(-1);
-				})
-				.then(() => {
-					process.exit(0);
-				});
-		}, 10000);
 	}
 });
 
