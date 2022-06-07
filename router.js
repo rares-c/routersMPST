@@ -238,9 +238,9 @@ function initialise(protocolPath) {
 			return;
 		}
 		try {
+            res.end();
 			// On each received message, transition to new states
 			messageReceived(req.body, p);
-			res.end();
 		} catch (error) {
 			res.end();
 			// Protocol violation, delegate the handling of the error to the appropriate function
