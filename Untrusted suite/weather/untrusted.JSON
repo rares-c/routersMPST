@@ -7,64 +7,74 @@
 		"w": "http://localhost:8099"
 	},
 	"globalType": {
-		"type": "RECURSION_DEFINITION",
-		"recursionVariable": "X",
-		"protocolContinuation": {
-			"type": "EXCHANGE",
-			"sender": "c",
-			"receiver": "d",
-			"branches": {
-				"city": {
-					"valueType": "str",
-					"protocolContinuation": {
-						"type": "EXCHANGE",
-						"sender": "d",
-						"receiver": "c",
-						"branches": {
-							"coordinates": {
-								"valueType": "str",
-								"protocolContinuation": {
-									"type": "EXCHANGE",
-									"sender": "c",
-									"receiver": "w",
-									"branches": {
-										"coordinates": {
-											"valueType": "str",
-											"protocolContinuation": {
-												"type": "EXCHANGE",
-												"sender": "w",
-												"receiver": "c",
-												"branches": {
-													"temperature": {
-														"valueType": "int",
-														"protocolContinuation": {
-															"type": "RECURSIVE_CALL",
-															"recursionVariable": "X"
-														}
-													}
-												}
-											}
-										}
-									}
-								}
-							},
-							"missingCity": {
-								"valueType": "unit",
-								"protocolContinuation": {
-									"type": "RECURSIVE_CALL",
-									"recursionVariable": "X"
-								}
-							}
-						}
-					}
-				},
-				"quit": {
-					"valueType": "unit",
-					"protocolContinuation": {
-						"type": "END"
-					}
-				}
-			}
-		}
-	}
+        "type": "EXCHANGE",
+        "sender": "c",
+        "receiver": "w",
+        "branches": {
+            "key": {
+                "valueType": "str",
+                "protocolContinuation":{
+                    "type": "RECURSION_DEFINITION",
+                    "recursionVariable": "X",
+                    "protocolContinuation": {
+                        "type": "EXCHANGE",
+                        "sender": "c",
+                        "receiver": "d",
+                        "branches": {
+                            "city": {
+                                "valueType": "str",
+                                "protocolContinuation": {
+                                    "type": "EXCHANGE",
+                                    "sender": "d",
+                                    "receiver": "c",
+                                    "branches": {
+                                        "coordinates": {
+                                            "valueType": "str",
+                                            "protocolContinuation": {
+                                                "type": "EXCHANGE",
+                                                "sender": "c",
+                                                "receiver": "w",
+                                                "branches": {
+                                                    "coordinates": {
+                                                        "valueType": "str",
+                                                        "protocolContinuation": {
+                                                            "type": "EXCHANGE",
+                                                            "sender": "w",
+                                                            "receiver": "c",
+                                                            "branches": {
+                                                                "temperature": {
+                                                                    "valueType": "int",
+                                                                    "protocolContinuation": {
+                                                                        "type": "RECURSIVE_CALL",
+                                                                        "recursionVariable": "X"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "missingCity": {
+                                            "valueType": "unit",
+                                            "protocolContinuation": {
+                                                "type": "RECURSIVE_CALL",
+                                                "recursionVariable": "X"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "quit": {
+                                "valueType": "unit",
+                                "protocolContinuation": {
+                                    "type": "END"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

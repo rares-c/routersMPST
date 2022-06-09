@@ -11,6 +11,7 @@ const routerAddress = "http://localhost:8009";
 
 // The initial state of the weather wrapper
 let state = 1;
+let API_KEY;
 
 // Wait for POST requests on the root ('/') path
 app.post("/", (req, res) => {
@@ -18,35 +19,44 @@ app.post("/", (req, res) => {
 	res.end();
 	switch (state) {
 		case 1:
-			// Initial state, the weather wrapper receives the dependency labels city or quit
+			// Initial state, the weather wrapper receives the key label
+			state = 2;
+			break;
+		case 2:
+			// The weather wrapper receives the API key as a string
+			API_KEY = req.body.payload;
+			state = 3;
+			break;
+		case 3:
+			// The weather wrapper receives the dependency labels city or quit
 			if (req.body.payload == "city") {
 				// Client asked the database for a city
-				state = 2;
+				state = 4;
 			} else {
 				// Client asked the database to quit, terminate the weather wrapper
 				process.exit(0);
 			}
 			break;
-		case 2:
+		case 4:
 			// The weather wrapper receives the dependency labels coordinates or missingCity
 			if (req.body.payload == "coordinates") {
 				// The city requested by the client is in the database
-				state = 3;
+				state = 5;
 			} else {
 				// The city requested by the client is absent from the database
-				state = 1;
+				state = 3;
 			}
 			break;
-		case 3:
+		case 5:
 			// The weather wrapper receives the coordinates label from the client
-			state = 4;
+			state = 6;
 			break;
-		case 4:
+		case 6:
 			// The weather wrapper receives the coordinates as a string from the client
 			const coords = req.body.payload.split(" ");
 			axios
 				.get(
-					`https://api.openweathermap.org/data/2.5/weather?lat=${coords[0]}&lon=${coords[1]}&appid=${process.env.API_KEY}&units=metric`
+					`https://api.openweathermap.org/data/2.5/weather?lat=${coords[0]}&lon=${coords[1]}&appid=${API_KEY}&units=metric`
 				)
 				.catch((_) => {
 					console.log("Error occurred when communicating with the weather API");
@@ -54,7 +64,9 @@ app.post("/", (req, res) => {
 				})
 				.then((res) => {
 					// Send the temperature label to the client
-                    console.log(`Temperature of the requested coordinates: ${res.data.main.temp}`);
+					console.log(
+						`Temperature of the requested coordinates: ${res.data.main.temp}`
+					);
 					axios
 						.post(routerAddress, {
 							sender: "w",
@@ -83,7 +95,8 @@ app.post("/", (req, res) => {
 								});
 						});
 				});
-			state = 1;
+			state = 3;
+			break;
 	}
 });
 

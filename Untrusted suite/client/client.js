@@ -27,8 +27,8 @@ app.post("/", (req, res) => {
 			if (req.body.payload == "coordinates") {
 				state = 2;
 			} else {
-                // Received the missingCity label
-                console.log("City not found in the database");
+				// Received the missingCity label
+				console.log("City not found in the database");
 				promptUser();
 			}
 			break;
@@ -70,7 +70,7 @@ app.post("/", (req, res) => {
 		case 4:
 			// In the fourth state, the client receives the temperature in the given city
 			console.log(`Received temperature: ${req.body.payload}`);
-            promptUser();
+			promptUser();
 			state = 1;
 			break;
 	}
@@ -84,7 +84,34 @@ app.get("/api/alive", (req, res) => {
 // Party can commence the transmission
 app.post("/api/alive", (req, res) => {
 	res.end();
-	promptUser();
+    // Prompt the user for the API key and send it to the weather wrapper
+	rl.question("Enter your API key: ", (key) => {
+		axios
+			.post(routerAddress, {
+				sender: "c",
+				receiver: "w",
+				payload: "key",
+			})
+			.catch((_) => {
+				console.log(`Error occurred when communicating with the router`);
+				// Communication with the router cannot happen. Quit the process.
+				process.exit(-1);
+			})
+			.then((_) => {
+				axios
+					.post(routerAddress, {
+						sender: "c",
+						receiver: "w",
+						payload: key,
+					})
+					.catch((_) => {
+						console.log(`Error occurred when communicating with the router`);
+						// Communication with the router cannot happen. Quit the process.
+						process.exit(-1);
+					})
+					.then((_) => promptUser()); // Prompt the user for any queries
+			});
+	});
 });
 
 // Function that prompts the user for a city or to quit the process
@@ -104,7 +131,7 @@ function promptUser() {
 					process.exit(-1);
 				})
 				.then((_) => {
-                    rl.close();
+					rl.close();
 					process.exit(0);
 				});
 		} else {

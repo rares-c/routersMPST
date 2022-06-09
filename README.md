@@ -71,9 +71,8 @@ node Untrusted\ suite/database/db.js
 
 At last, the weather wrapper can be started using:
 ```
-API_KEY="<API_KEY>" node Untrusted\ suite/weather/weatherwrapper.js
+node Untrusted\ suite/weather/weatherwrapper.js
 ```
-Where `<API_KEY>` is replaced by your API key. 
 
 Next, start up all the routers.
 
