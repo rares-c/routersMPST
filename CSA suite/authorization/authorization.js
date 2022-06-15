@@ -71,6 +71,13 @@ app.post("/", (req, res) => {
 	}
 });
 
+// Protocol violation handler
+app.post("/api/violation", (req, res) => {
+    res.end();
+    console.log("PROTOCOL VIOLATION");
+    process.exit(-1);
+});
+
 // Respond with an empty object to signal that the party is online
 app.get("/api/alive", (req, res) => {
 	res.end();

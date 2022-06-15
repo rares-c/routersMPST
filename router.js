@@ -264,7 +264,7 @@ function initialise(protocolPath) {
 			res.end();
             violationDetected = true;
 			// Protocol violation, delegate the handling of the error to the appropriate function
-			panic(error, qs, participants);
+			panic(error, [...qs, p], participants);
 		}
 	});
 	app.get("/api/alive", (_, res) => {
@@ -275,7 +275,14 @@ function initialise(protocolPath) {
 		// Error route for violations at different routers
 		res.end();
 		console.log("PROTOCOL VIOLATION");
-		process.exit(-1);
+        axios.post(participants[p] + "/api/violation").catch((_) => {
+			// Inform the router's participant of the violation
+			console.log(`Error occurred when communicating with ${qs[i]}`);
+			process.exit(-1);
+		}).then((_) => {
+            // Terminate the router's execution
+            process.exit(-1);
+        });
 	});
 	app.listen(protocol["routerPort"], () => {
 		console.log(`Router for ${p} listening on port ${protocol["routerPort"]}`);
