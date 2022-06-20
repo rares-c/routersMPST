@@ -23,51 +23,72 @@ app.post("/", (req, res) => {
 	} else {
 		// In this state the server receives the boolean from the authorization server denoting whether the
 		// client is authorized or not
-		if (req.body.payload) console.log("Client authorized!");
-		else console.log("Authorization denied!");
-        state = 1;
+		if (req.body.payload) {
+			console.log("Client authorized!");
+			// Send the quit label to the client, authorization successful
+			axios
+				.post(routerAddress, {
+					sender: "s",
+					receiver: "c",
+					payload: "quit",
+				})
+				.catch((_) => {
+					console.log(`Error occurred when communicating with the router`);
+					// Communication with the router cannot happen. Quit the process.
+					process.exit(-1);
+				})
+				.then(() => {
+					process.exit(0);
+				});
+		} else {
+			console.log("Authorization denied!");
+			// Retry the authorization
+			axios
+				.post(routerAddress, {
+					sender: "s",
+					receiver: "c",
+					payload: "login",
+				})
+				.catch((_) => {
+					console.log(`Error occurred when communicating with the router`);
+					// Communication with the router cannot happen. Quit the process.
+					process.exit(-1);
+				});
+		}
+		state = 1;
 	}
+});
+
+// Protocol violation handler
+app.post("/api/violation", (req, res) => {
+    res.end();
+    console.log("PROTOCOL VIOLATION");
+    process.exit(-1);
 });
 
 // Respond with an empty object to signal that the party is online
 app.get("/api/alive", (req, res) => {
-    res.end();
+	res.end();
 });
 
 // Party can commence the transmission
 app.post("/api/alive", (req, res) => {
-    res.end();
-    if(!actionTaken){
-        actionTaken = true;
-        // Send the login label initially to the client
-        axios.post(routerAddress, {
-            sender: "s",
-            receiver: "c",
-            payload: "login",
-        }).catch((err) => {
-            console.log(
-                `Error occurred when communicating with the router`
-            );
-            // Communication with the router cannot happen. Quit the process.
-            process.exit(-1);
-        });
-        setTimeout(() => {
-            // Send the quit label to the client after 10 seconds
-            axios.post(routerAddress, {
-                sender: "s",
-                receiver: "c",
-                payload: "quit",
-            }).catch((err) => {
-                console.log(
-                    `Error occurred when communicating with the router`
-                );
-                // Communication with the router cannot happen. Quit the process.
-                process.exit(-1);
-            }).then(() => {
-                process.exit(0);
-            });
-        }, 10000);
-    }
+	res.end();
+	if (!actionTaken) {
+		actionTaken = true;
+		// Send the login label initially to the client
+		axios
+			.post(routerAddress, {
+				sender: "s",
+				receiver: "c",
+				payload: "login",
+			})
+			.catch((err) => {
+				console.log(`Error occurred when communicating with the router`);
+				// Communication with the router cannot happen. Quit the process.
+				process.exit(-1);
+			});
+	}
 });
 
 // Start the server

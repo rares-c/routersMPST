@@ -6,7 +6,7 @@ const express = require("express");
 const axios = require("axios").default;
 const chalk = require("chalk");
 
-let currentState, participants, lastReceiveState, partyOnline, networkOnline;
+let currentState, participants, lastReceiveState, partyOnline, networkOnline, violationDetected;
 
 // Function that forwards a received message to its corresponding receivers
 async function forwardMessage(message, p) {
@@ -97,7 +97,7 @@ function messageReceived(message, p) {
 			message["sender"]
 		} contains a ${typeof message["payload"]}, while the router expected a ${
 			currentState["messageType"]
-		}`;
+		}\nPROTOCOL VIOLATION`;
 	}
 	// The sender of the message matches the expected sender, and the payload conforms to the expected type.
 	// Forward the message to the required destinations.
@@ -119,10 +119,18 @@ function messageReceived(message, p) {
 	}
 }
 
-// Function that handles the error that occurred by logging it onto the console
-// and exiting the process
-function panic(error) {
+// Function that handles the error that occurred by logging it onto the console,
+// informing the other routers and exiting the process
+async function panic(error, qs, participants) {
 	console.log(error);
+	// Inform the other routers of the protocol violation
+	for (let i = 0; i < qs.length; i++) {
+		await axios.post(participants[qs[i]] + "/api/violation").catch((_) => {
+			// Error occurred, router unreachable
+			console.log(`Error occurred when communicating with ${qs[i]}`);
+			process.exit(-1);
+		});
+	}
 	process.exit(-1);
 }
 
@@ -131,6 +139,7 @@ function panic(error) {
 function recover(error) {
 	console.log(error);
 	currentState = lastReceiveState;
+    violationDetected = false;
 }
 
 // Function that checks whether the party at the given address is online through a GET request to
@@ -156,7 +165,7 @@ async function checkParty(participant, qs, participants) {
 	waitOnNetwork(participant, qs, participants);
 }
 
-// Function that checks whether the rest of the network is online. The function polls every 
+// Function that checks whether the rest of the network is online. The function polls every
 // router to check whether it is online or not through GET requests on the route "/api/alive".
 // Routers that fail to return an appropriate response are marked as offline, and added to the
 // list of failed routers. The function then retries all the routers that were offline in the
@@ -164,29 +173,33 @@ async function checkParty(participant, qs, participants) {
 async function waitOnNetwork(p, qs, participants) {
 	const online = {};
 	while (qs.length > 0) {
-        // Keep track of the routers that fail to return an appropriate response in the current iteration
+		// Keep track of the routers that fail to return an appropriate response in the current iteration
 		const failed = [];
-        // Poll every router
+		// Poll every router
 		for (let i = 0; i < qs.length; i++) {
 			await axios
 				.get(participants[qs[i]] + "/api/alive", { timeout: 100 })
 				.then((_) => {
-                    // Router responded, it is online.
-					console.log(`Router for participant ${qs[i]} ` + chalk.green("online"));
+					// Router responded, it is online.
+					console.log(
+						`Router for participant ${qs[i]} ` + chalk.green("online")
+					);
 				})
 				.catch((_) => {
-                    // Error occurred, router unreachable
+					// Error occurred, router unreachable
 					if (!(qs[i] in online)) {
-                        // Only log that the router is offline if this is the first attempt to contact it
-						console.log(`Router for participant ${qs[i]} ` + chalk.red("not online"));
+						// Only log that the router is offline if this is the first attempt to contact it
+						console.log(
+							`Router for participant ${qs[i]} ` + chalk.red("not online")
+						);
 						online[qs[i]] = false;
 					}
-                    // Add the current router to the list of failed routers
+					// Add the current router to the list of failed routers
 					failed.push(qs[i]);
 				});
 		}
-        // In the next iteration, retry just the routers that failed to respond. If all 
-        // routers responded successfully, the list will be empty and the loop will stop.
+		// In the next iteration, retry just the routers that failed to respond. If all
+		// routers responded successfully, the list will be empty and the loop will stop.
 		qs = failed;
 	}
 	networkOnline = true;
@@ -209,6 +222,7 @@ async function signalParty(p, address) {
 function initialise(protocolPath) {
 	partyOnline = false;
 	networkOnline = false;
+    violationDetected = false;
 	// Parse protocol
 	const protocol = JSON.parse(fs.readFileSync(protocolPath, "utf8"));
 	// Check for the correct specification of the protocol
@@ -237,19 +251,38 @@ function initialise(protocolPath) {
 			res.end();
 			return;
 		}
+        if(violationDetected){
+            // A violation has been detected, ignore incoming messages until it has been handled
+            res.end();
+            return;
+        }
 		try {
+			res.end();
 			// On each received message, transition to new states
 			messageReceived(req.body, p);
-			res.end();
 		} catch (error) {
 			res.end();
+            violationDetected = true;
 			// Protocol violation, delegate the handling of the error to the appropriate function
-			panic(error);
+			panic(error, [...qs, p], participants);
 		}
 	});
 	app.get("/api/alive", (_, res) => {
 		if (!partyOnline) res.status(400);
 		res.end();
+	});
+	app.post("/api/violation", (_, res) => {
+		// Error route for violations at different routers
+		res.end();
+		console.log("PROTOCOL VIOLATION");
+        axios.post(participants[p] + "/api/violation").catch((_) => {
+			// Inform the router's participant of the violation
+			console.log(`Error occurred when communicating with ${qs[i]}`);
+			process.exit(-1);
+		}).then((_) => {
+            // Terminate the router's execution
+            process.exit(-1);
+        });
 	});
 	app.listen(protocol["routerPort"], () => {
 		console.log(`Router for ${p} listening on port ${protocol["routerPort"]}`);
