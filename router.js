@@ -6,7 +6,12 @@ const express = require("express");
 const axios = require("axios").default;
 const chalk = require("chalk");
 
-let currentState, participants, lastReceiveState, partyOnline, networkOnline, violationDetected;
+let currentState,
+	participants,
+	lastReceiveState,
+	partyOnline,
+	networkOnline,
+	violationDetected;
 
 // Function that forwards a received message to its corresponding receivers
 async function forwardMessage(message, p) {
@@ -90,7 +95,9 @@ function messageReceived(message, p) {
 		(currentState["messageType"] == "int" &&
 			!Number.isInteger(message["payload"])) ||
 		(currentState["messageType"] == "bool" &&
-			typeof message["payload"] != "boolean")
+			typeof message["payload"] != "boolean") ||
+		(currentState["messageType"] == "real" &&
+			typeof message["payload"] != "number")
 	) {
 		// The type of the actual value that was sent does not match the type of the expected value
 		throw `The received message from ${
@@ -139,7 +146,7 @@ async function panic(error, qs, participants) {
 function recover(error) {
 	console.log(error);
 	currentState = lastReceiveState;
-    violationDetected = false;
+	violationDetected = false;
 }
 
 // Function that checks whether the party at the given address is online through a GET request to
@@ -222,7 +229,7 @@ async function signalParty(p, address) {
 function initialise(protocolPath) {
 	partyOnline = false;
 	networkOnline = false;
-    violationDetected = false;
+	violationDetected = false;
 	// Parse protocol
 	const protocol = JSON.parse(fs.readFileSync(protocolPath, "utf8"));
 	// Check for the correct specification of the protocol
@@ -251,18 +258,18 @@ function initialise(protocolPath) {
 			res.end();
 			return;
 		}
-        if(violationDetected){
-            // A violation has been detected, ignore incoming messages until it has been handled
-            res.end();
-            return;
-        }
+		if (violationDetected) {
+			// A violation has been detected, ignore incoming messages until it has been handled
+			res.end();
+			return;
+		}
 		try {
 			res.end();
 			// On each received message, transition to new states
 			messageReceived(req.body, p);
 		} catch (error) {
 			res.end();
-            violationDetected = true;
+			violationDetected = true;
 			// Protocol violation, delegate the handling of the error to the appropriate function
 			panic(error, [...qs, p], participants);
 		}
@@ -275,14 +282,17 @@ function initialise(protocolPath) {
 		// Error route for violations at different routers
 		res.end();
 		console.log("PROTOCOL VIOLATION");
-        axios.post(participants[p] + "/api/violation").catch((_) => {
-			// Inform the router's participant of the violation
-			console.log(`Error occurred when communicating with ${qs[i]}`);
-			process.exit(-1);
-		}).then((_) => {
-            // Terminate the router's execution
-            process.exit(-1);
-        });
+		axios
+			.post(participants[p] + "/api/violation")
+			.catch((_) => {
+				// Inform the router's participant of the violation
+				console.log(`Error occurred when communicating with ${qs[i]}`);
+				process.exit(-1);
+			})
+			.then((_) => {
+				// Terminate the router's execution
+				process.exit(-1);
+			});
 	});
 	app.listen(protocol["routerPort"], () => {
 		console.log(`Router for ${p} listening on port ${protocol["routerPort"]}`);
