@@ -43,7 +43,7 @@
                                                             "receiver": "c",
                                                             "branches": {
                                                                 "temperature": {
-                                                                    "valueType": "int",
+                                                                    "valueType": "real",
                                                                     "protocolContinuation": {
                                                                         "type": "RECURSIVE_CALL",
                                                                         "recursionVariable": "X"

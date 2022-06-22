@@ -84,7 +84,7 @@ app.post("/", (req, res) => {
 								.post(routerAddress, {
 									sender: "w",
 									receiver: "c",
-									payload: parseInt(res.data.main.temp),
+									payload: res.data.main.temp,
 								})
 								.catch((_) => {
 									console.log(
