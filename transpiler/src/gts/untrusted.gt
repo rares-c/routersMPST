@@ -1,0 +1,4 @@
+c -> w (key . c -> w <str> . mu X . c -> d (city . c -> d <str> . d -> c (coordinates . d -> c <str> . c -> w (coordinates . c -> w <str> . w -> c (temperature . w -> c <real> . X)),    
+                                             missingCity . X), 
+               
+               quit . end))

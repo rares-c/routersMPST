@@ -1,0 +1,2 @@
+mu X . s -> c (login . c -> a (passwd . c -> a <str> . a -> s (auth. a -> s <bool> . X)),
+			   quit . c -> a (quit . end))
