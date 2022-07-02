@@ -6,7 +6,7 @@
 		"a": "192.168.0.0"
 	},
 	"globalType": {
-		"type": "RECURSION_DEFINITION",
+		"type": "RECURSIVE_DEFINITION",
 		"recursionVariable": "X",
 		"protocolContinuation": {
 			"type": "EXCHANGE",
@@ -50,7 +50,7 @@
 							"quit": {
 								"valueType": "unit",
 								"protocolContinuation": {
-                                    "type": "RECURSION_DEFINITION",
+                                    "type": "RECURSIVE_DEFINITION",
 		                            "recursionVariable": "X",
                                     "protocolContinuation": {
                                         "type": "END"

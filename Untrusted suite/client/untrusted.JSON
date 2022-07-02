@@ -14,7 +14,7 @@
             "key": {
                 "valueType": "str",
                 "protocolContinuation":{
-                    "type": "RECURSION_DEFINITION",
+                    "type": "RECURSIVE_DEFINITION",
                     "recursionVariable": "X",
                     "protocolContinuation": {
                         "type": "EXCHANGE",

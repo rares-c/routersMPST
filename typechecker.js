@@ -3,7 +3,7 @@
 // 3 errors are checked:
 // -- All exchanges involve participants defined in the participants list
 // -- All recursive calls use a variable defined beforehand
-// -- All recursion definitions use free variables
+// -- All recursive definitions use free variables
 function checkGlobalType(globalType, recursiveVariables, participants) {
 	switch (globalType["type"]) {
 		case "EXCHANGE":
@@ -29,7 +29,7 @@ function checkGlobalType(globalType, recursiveVariables, participants) {
 					globalType["recursionVariable"]
 				);
 			break;
-		case "RECURSION_DEFINITION":
+		case "RECURSIVE_DEFINITION":
 			if (recursiveVariables.includes(globalType["recursionVariable"]))
 				throw (
 					"Redefinition of recursion on variable " +

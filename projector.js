@@ -4,8 +4,8 @@ const util = require("util");
 function relativeProjection(p, q, globalType) {
 	// Recursive traversal based on the structure of the global type
 	switch (globalType["type"]) {
-		case "RECURSION_DEFINITION":
-			return projectRecursionDefinition(p, q, globalType);
+		case "RECURSIVE_DEFINITION":
+			return projectRecursiveDefinition(p, q, globalType);
 		case "RECURSIVE_CALL":
 			// Just a recursive call
 			return globalType;
@@ -17,17 +17,17 @@ function relativeProjection(p, q, globalType) {
 	}
 }
 
-// Function that computes the relative projection of a recursion definition
-function projectRecursionDefinition(p, q, globalType) {
+// Function that computes the relative projection of a recursive definition
+function projectRecursiveDefinition(p, q, globalType) {
 	const continuationProjection = relativeProjection(
 		p,
 		q,
 		globalType["protocolContinuation"]
 	);
-	// Recursion definition, check the contractiveness of the continuation
+	// Recursive definition, check the contractiveness of the continuation
 	if (isContractive(continuationProjection, globalType["recursionVariable"])) {
 		return {
-			type: "RECURSION_DEFINITION",
+			type: "RECURSIVE_DEFINITION",
 			recursionVariable: globalType["recursionVariable"],
 			protocolContinuation: continuationProjection,
 		};
@@ -77,7 +77,7 @@ function isContractive(relativeType, recursionVariable) {
 			return true;
 		case "END":
 			return false;
-		case "RECURSION_DEFINITION":
+		case "RECURSIVE_DEFINITION":
 			return isContractive(
 				relativeType["protocolContinuation"],
 				recursionVariable

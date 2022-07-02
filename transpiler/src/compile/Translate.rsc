@@ -58,7 +58,7 @@ str gt2json(GT globalType){
 			'	<choices2json(choices, exc.from, exc.to)>
 			'}";
 		case recDef(str var, GT cont):
-			returnString += "\"type\": \"RECURSION_DEFINITION\",
+			returnString += "\"type\": \"RECURSIVE_DEFINITION\",
 			'\"recursionVariable\": \"<var>\",
 			'\"protocolContinuation\": {
 			'	<gt2json(cont)>

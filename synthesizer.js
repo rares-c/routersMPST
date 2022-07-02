@@ -5,7 +5,7 @@ function synthesize(globalType, p, qs) {
 	switch (globalType["type"]) {
 		case "EXCHANGE":
 			return synthesizeExchange(globalType, p, qs);
-		case "RECURSION_DEFINITION":
+		case "RECURSIVE_DEFINITION":
 			return synthesizeDefinition(globalType, p, qs);
 		case "RECURSIVE_CALL":
 			return synthesizeCall(globalType, p, qs);
@@ -158,7 +158,7 @@ function synthesizeExchange(globalType, p, qs) {
 	}
 }
 
-// Function that returns the router process corresponding to a recursion definition
+// Function that returns the router process corresponding to a recursive definition
 function synthesizeDefinition(globalType, p, qs) {
 	const qsPrime = [];
 	qs.forEach((q) => {
@@ -167,7 +167,7 @@ function synthesizeDefinition(globalType, p, qs) {
 	});
 	if (qsPrime.length > 0) {
 		return {
-			actionType: "RECURSION_DEFINITION",
+			actionType: "RECURSIVE_DEFINITION",
 			recursionVariable: globalType["recursionVariable"],
 			continuation: synthesize(globalType["protocolContinuation"], p, qsPrime),
 		};
@@ -237,10 +237,10 @@ function transform(process, recursiveDefs, pendingVars) {
 				[]
 			);
 			break;
-		case "RECURSION_DEFINITION":
+		case "RECURSIVE_DEFINITION":
 			// New recursive variable that must be replaced by the next state. Push it to the list of
-			// pending variables, and transform the continuation. A list of pending recursive variables
-			// is needed for sequences of recursion definitions.
+			// pending variables, and transform the continuation. A list of pending recursion variables
+			// is needed for sequences of recursive definitions.
 			pendingVars.push(returnState["recursionVariable"]);
 			returnState = transform(
 				returnState["continuation"],

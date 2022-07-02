@@ -7,7 +7,7 @@
 		"a": "http://localhost:8082"
 	},
 	"globalType": {
-		"type": "RECURSION_DEFINITION",
+		"type": "RECURSIVE_DEFINITION",
 		"recursionVariable": "X",
 		"protocolContinuation": {
 			"type": "EXCHANGE",
